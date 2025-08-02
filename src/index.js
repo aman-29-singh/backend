@@ -8,7 +8,17 @@ import connectDB from './db/index.js';
 dotenv.config()
     
 
-connectDB();
+connectDB()//isse mongodb atlas connect hoga aur yeh ek asynchronous method hai
+//toh asynchronous method jab bhi complete hota hai toh yeh actually technically humko ek promise bhi return karta hai
+.then(()=> {
+    app.listen(process.env.PORT || 8000, ()=> {
+        console.log(`Server is running on port ${process.env.PORT}`);
+    })
+})//if promise resove
+.catch((error)=> {
+    console.log("MONGO db connection failed !!!", error)
+})
+
 
 
 
@@ -21,7 +31,7 @@ const app = express();
 ( ()=> {
     try{
         mongoose.connect(`${process.env.MONGODB_URI}/${DB_NAME}`)
-        app.on("error", (error)=> {
+        app.on("error", (error)=> {   //ERROR K LIYE LISTEN KAR RHE HAI
             console.log("ERROR:", error)
             throw error
         })

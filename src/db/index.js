@@ -19,6 +19,9 @@ const connectDB = async () => {
         so process k exit code hote hai toh hum exit karwaynge 1 se agar Node app fail hogya toh  */
         process.exit(1)
     }
+    /*Note- Database se jab bhi baat karenge hum toh 2 chizo ka dhyan rakhna hai pehla ki Database coonection
+    mein time lagta hai toh async await ka use karna hai aur doosra hai ki humein try{} catch{} laga k
+    dekhenge kyunki arror aasakta hai */
 }
 
 export default connectDB;
