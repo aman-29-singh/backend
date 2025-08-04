@@ -3,7 +3,7 @@ class ApiError extends Error {
         statusCode,
         message= "Something went wrong", //agar koi error message nhi dega toh ye message aayega
         errors = [],
-        statck = ""
+        stack = ""
     ){
         //abb idhar constructor k parameters ko hum Overwrite karenge idhar
         super(message)//super() call karenge message ko OverWrite karne k liye
@@ -16,9 +16,9 @@ class ApiError extends Error {
         this.errors = errors
 
 
-        if (statck) {
+        if (stack) {
             //api error ki file woh issi statck mein hota hai ye production mein karte hai
-            this.stack = statck
+            this.stack = stack
         } else{
             Error.captureStackTrace(this, this.constructor)
         }
