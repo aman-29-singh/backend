@@ -3,7 +3,7 @@ karenge async await wala and try{} catch{} wala */
 
 // ye promises wala hai aur niche wala code same hai using try{} and catch{}
 const asyncHandler = (requestHandler) => {
-    (req, res, next) => {
+    return (req, res, next) => {
         Promise.resolve(requestHandler(req, res, next)).catch((err) => next(err))
     }
 }

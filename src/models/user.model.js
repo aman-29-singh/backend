@@ -98,7 +98,7 @@ userSchema.pre("save", async function(next) {
       password bhejunga tab encrypt karna so we will use if{} condition to check if field is modigy or not */
       if(!this.isModified("password")) return next();
 
-      this.password = bcrypt.hash(this.password, 10)// so password encrypt kar dega
+      this.password = await bcrypt.hash(this.password, 10)// so password encrypt kar dega
       next()
 })
 /*now humein kuch methods create karne padenge taki jab hum user ko import karaye toh user se puch le 

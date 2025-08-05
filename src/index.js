@@ -1,6 +1,7 @@
-
+import express from "express"
 import dotenv from "dotenv";
 
+const app = express();
 //require('dotenv').config({path: './env'})
 import connectDB from './db/index.js';
 
