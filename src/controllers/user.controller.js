@@ -1,8 +1,9 @@
 import express from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import {ApiError} from "../utils/ApiError.js"
-import {User} from "../models/user.model.js"
+import { User} from "../models/user.model.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
+import { ApiResponse } from "../utils/ApiResponse.js";
 const registerUser = asyncHandler( async (req, res)=> {
     /**challenge itna hai ki humein user ko register karna hai but ye dikhne mein itna sa challenge hai but
      * itna nhi hai because ye challenge k steps bohat hai yahi chiz hai jo humari logic building exercise mein help
@@ -149,6 +150,49 @@ const registerUser = asyncHandler( async (req, res)=> {
    throw new ApiError(400, "Avatar file is required")
  }
 
+
+ //STEP 6- Abb agar saara kaam thik se hogya hai avatar ye sab ka url aagaya hai toh ek object banao aur database mein entry maar do
+ ////toh abb bas object banakar database mein entry kardo toh abb database mein entry kaise hoga
+ //toh humare pass ek hii chiz hai jo Database se baat kar rha hai ye User hai yahi database se baat kar rha hai
+  const User = await User.create({//database mein User create hone mein time lagega isliye hum use karenge await ko
+  fullName,
+  avatar: avatar.url,//so cloudinary humein poora response bhejega but humein response mein se sirf url ko database mein store karenge
+  //so agar avatar:avatar karte toh poora object database mein store ho jata but humein sirf url ko hii store karna tha
+  coverImage:coverImage?.url || "",//agar coverImage hai toh usmein se url nikal lo agar coverImage nhi hai toh empty rehne do usko i.e "" because coverImage required field nhi hai user.model.js k andar
+  email,
+  password,
+  username:username.toLowerCase()
+  //so abb ek proper object ban gya hai jismein jitne fields muje chaiye woh ban gye hai i.e jitne fields user.model.js mein define hai woh ban gye hai
+  //watchHistory and refreshToken ko hum programitically baad mein add karenge abhi jo required:true field hai woh humne add kiya hai
+  
+})
+
+
+//agar ye User successfully create hua hai n toh sirf humne jo data diya hai yahi sab data create nhi hota
+// iske saath mongodb apne aap har ek entry k saath ek _id naam ka field add kar deta hai user._id mil gya toh matlab user aapka create
+//so yeh _id yeh ek extra field apne aap add hota hai
+const createdUser = await User.findById(username._id).select( //THIS IS STEP 7 i.e remove the password and refreshToken field from response
+  //ismein hum woh field likhte hai jo nhi chaiye because we want to remove password  and refreshToken
+  //toh by default saare selected hote hai toh "-" negative minus jis field k aage matlab woh nahi chaiye
+  "-password -refreshToken"
+  //so abb mere pass saara response aaya hai createdUser ka create hokar but ismein 2 field select hokar nahi aayenge i.e password and refreshToken
+
+) 
+ 
+ //STEP 8 --abb check karenge user creation
+ if(!createdUser) {
+  throw new ApiError(500, "Something went wrong while registering a user")
+ }
+
+ //STEP 9 ABB agar user propery ban gya hai toh abb response mein bhej do sabko wapis i.e return response
+ //so humein response k liye help lagegi utility folder k ApiResponse ki because hum nhi chahte ki response kaise bhi jaye
+ //hum chahte hai ki Response properly structured organized Response jaye har baar toh iske liye ApiResponse lagega
+ //toh mein chahta hoon ki ye createdUser hai isko poore ko hii hum data k saath because in ApiRespone mein this.data aise allowed hai data ko bhejna
+
+ return res.ststus(201).json(
+  new ApiResponse(200, createdUser, "User registered Successfully")
+  //here createdUser is data yahi data ApiResponse mein jaakar this.data banta hai
+ )
 
   })
 

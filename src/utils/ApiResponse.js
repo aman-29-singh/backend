@@ -11,3 +11,6 @@ class ApiResponse {
         this.success = statusCode < 400
     }
 }
+
+
+export { ApiResponse }//doosre file mein use hone k liye
