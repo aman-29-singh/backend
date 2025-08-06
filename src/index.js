@@ -1,7 +1,8 @@
 import express from "express"
 import dotenv from "dotenv";
+import { app } from "./app.js";//import this so that your app is running properly and all routes and controller work properly
 
-const app = express();
+//const app = express();//don't configure app here because we already have created app.js file import this app.js file
 //require('dotenv').config({path: './env'})
 import connectDB from './db/index.js';
 

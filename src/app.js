@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
+
+
 const app = express();
 
 app.use(cors({
@@ -33,12 +35,12 @@ app.use(cookieParser())//cookieParser() iss () k andar bhi options hai jo kaam a
 
 //routtes import from user.route.js i.e routes folder se
 import router from "./routes/user.route.js";
-
 /*routes declaration so app.get() pehle likh rahe the aur apna kaam ho rha tha aur ye kaam isliye ho rha
 tha kyunki app.get() k through hum yahin par routes likh rahe the aur yahin par hum controllers likh rahe the i.e app.get() k andar
 par kyunki abb chize separate hogyi hai i.e router ko hum alag nikalkar routes folder mein le gye hai
 toh abb router ko laana k liye middleware lana padega i.e app.get() ki jagah hum app.use() ko use karenge i.e middleware app.use() ko use karenge*/
-app.use("/api/v1/users", router)//toh koi bhi user jaise type karega /users toh hum control dedenge router of routes folder k
+//app.use("/api/v1/users", router)//toh koi bhi user jaise type karega /users toh hum control dedenge router of routes folder k
+app.use("/api/v1/users", router);
 //toh router ye jayega user.route.js file mein aur iss file mein router par route like /register and iska controller define hoga like registerUser
 //so url banega http://localhost:8000/users/register so ye /register user.route.js mein se aayega aur bhi routes jaise /login,/dashboard etc aasakte hai using router
 //toh phir /login,/dashboard par jane k liye bas url mein thoda change jaise http:localhost:8000/users/login aise hoga

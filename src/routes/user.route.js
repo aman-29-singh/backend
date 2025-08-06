@@ -6,6 +6,10 @@ import { registerUser } from "../controllers/user.controller.js";
 const router = Router();
 
 router.route("/register").post(registerUser)
+router.get("/test", (req, res) => {
+    res.send("Test route working");
+});
+
 
 export default router
 
