@@ -1,6 +1,8 @@
 import express from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
-
+import {ApiError} from "../utils/ApiError.js"
+import {User} from "../models/user.model.js"
+import {uploadOnCloudinary} from "../utils/cloudinary.js"
 const registerUser = asyncHandler( async (req, res)=> {
     /**challenge itna hai ki humein user ko register karna hai but ye dikhne mein itna sa challenge hai but
      * itna nhi hai because ye challenge k steps bohat hai yahi chiz hai jo humari logic building exercise mein help
@@ -69,6 +71,85 @@ const registerUser = asyncHandler( async (req, res)=> {
       SO ABB HUMARe pass Algorithim aagai hai iss registerUser logic k liye i.e iss registerUser k liye yeh logic algorithim 
       rahegi that is this steps follow karna hii algorithim hai
     */
-})
+   //step1-- get user details from frontend so user details humein saari ki saari request k andar milti hai
+   //req.body//ismein req.body saaari detail mil jati hai jati bhi body se aati hai
+   //form se data aayega ya phir direct json se data aarha hai toh humein req.body mein mil jayega
+    const { fullName, email, username, password }= req.body
+    console.log("email:", email);//ye frontend se aaraha hai isko check kar rhe hai 
+    //toh postman mein se data bhejne k liye hum body par jayenge then we can select formData,raw etc but abhi k liye raw select
+    //karenge so raw select karenge aur text ki jagah json select karenge {"email": "aman@gmail"} phir ye http://localhost:8000/api/v1/users/register
+    //toh because of console.log() server mein email:aman@gmail.com aayega
+
+    //STEP-2  abb user ki details aagayi toh abb karna hai validation 
+    // toh validation kaise karenge ki ek ek field ko check karna hai ki woh field empty toh nhi hai
+    /*
+    if(fullName === ""){
+      throw new ApiError(400,"fullName is required")//i.e statuscode and message pass kar denge iska response banke mil jayega
+      //yeh api error ka Response bankar dedega because errore is fullNmae==="" toh iss error ka response banakr dedega
+  
+    } */ //yeh bohat siply check kar rhe hai but bohat saare fields check karne hai isliye 
+     
+    if(
+      [fullName, email, username, password].some((field)=> //ye callback function sab field k upar chalega i.e username,fullname etc 
+        field?.trim() === "")//it checks ki field i.e username,email etc yeh empty hai kya
+    ){
+      throw new ApiError(400,"All fiels are required")
+    }
+    //Note- aur bhi validation likh sakte hai jaise email mein @ hai include hai ya nhi ye validation se check kar sakte hai
+    //so production level code mein ek validation ki separate files hoti hai unn files k andar se method call kar lete hai email wagera validate karne k liye
+
+  
+  // STEP-3 kaise check karenge that if user is already exists or nott so we import {User} frfom user.model.js 
+  //so yeh User jo mongoose ki help se user.model.js k andar bana hai ye direct mongodb database se baat kar sakta hai
+  ///jaise ye User aagaya toh humein kuch nhi karna hai ye User hii humare behalf pe call karega mongodb database ko jitni baar chaiye utni baart call kar sakta hai
+  const existedUser = User.findOne({
+    //muje check karna hai ki user ka ya toh email mil jaye ya to user ka username mil jaye ho sakta hai email alag ho but username already le rakha ho phir mein dunga
+    //so we will use operators so $ sign use karke hum kaafi operators use kar sakte hai
+    $or: [{ username },{ email }]
+  })
+  //so agar existedUser hai toh muje aage proceed hii nhi karna hai muje user ko sidha wahin k wahin error throw karna hai
+  if(existedUser){
+    throw new ApiError(409, "User with email or username already exists")
+  } 
+
+  //STEPS4-- NOW Humein check karna hai images aur avatar wale images check karni padegi
+  /*so abhi tak humne dekha hai ki server mein humare pass req.body k andar saara ka saara data aata hai
+  but lekin kyunki humne "/register" k routes k andar jaakar -->upload middleware add kar diya hai toh
+  yeh middleware bhi humein server ko kuch access deta hai toh yeh middleware karta kuch nhi hai ye
+  frontend se aayi request k andar aur kuch fields add karta hai jyada tar cases mein yahi karta hai 
+  toh jaise aapke pass req.body by default express ne de diya hai toh multer humein deta req.files ka access
+  deta hai i.e multer humein req.files ka access de deta hai abb kyunki humare pass multiple files hai toh 
+  files ka access humein issi tarah milta hai */
+  const avatarLocalPath = req.files?.avatar[0]?.path; //kyunki humne file ko bola hii avatar hai isliye mein file ka naam avatar le rha hoon
+  //console.log(avatarLocalPath) aise check bhi kar sakte hai 
+  // avatarLocalPath isliye kyunki ye abhi humare server par hai ye abhi tak cloudinary par nhi gya hai
+
+  //same with coverImage
+  const coverImageLocalPath = req.files?.coverImage[0]?.path; //ie coverImage[0] ki first property se humein optionally ho sakta hai mil jaye ek path
+  
+  //toh humare pass server mein 2 LocalPath aagaye abb ye LocalPath honge ya nhi hone iski koi gurantee nhi hai ho bhi sakte hai nhi bhi ho sakte
+  //but ek path to chaiye hii chaiye ki humare pass mein avatar wali image toh honi hii chaiye toh check karenge
+  if(!avatarLocalPath) {
+    throw new ApiError(400, "Avata file is required")
+  }
+
+//STEP 5- ABB ye dono file i.e avatarLocalPath and coverImageLocalPath jo humare server mein hai inko cloudinary mein upload karna hai
+//i.e ye avatar file ko and coverImage ko cloudinary k upar upload karenge s
+//so humare pass cloudinary par file upload karne k liye already configuration ho rakha hai in cloudinary.js file of utils
+//i.e humne cloudinary.js utility file bana rakhi hai in utility folder 
+//iss cloudinary.js file mein ek uploadOnCloudinary method hai  jiska use karke hum file ko cloudinary par upload karenge
+//so uploadOnCloudinary(avatarLocalPath) pass kar dunga yeh avatar ko cloudinary k upar upload kar dega aur humein response mil jayega
+//ye uploadOnCloudinary() ye method time lagayega file ko upload karne k liye isliye we will use await
+ const avatar = await uploadOnCloudinary(avatarLocalPath)
+ const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
+ //so ye avatar cloudinary par chala gya abb kyunki avatar required field hai agar nhi hoga toh database phatega
+ //toh avatar ko ek baar phir check karenge
+ if(!avatar){
+   throw new ApiError(400, "Avatar file is required")
+ }
+
+
+  })
 
 export {registerUser}
