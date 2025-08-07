@@ -103,7 +103,7 @@ const registerUser = asyncHandler( async (req, res)=> {
   // STEP-3 kaise check karenge that if user is already exists or nott so we import {User} frfom user.model.js 
   //so yeh User jo mongoose ki help se user.model.js k andar bana hai ye direct mongodb database se baat kar sakta hai
   ///jaise ye User aagaya toh humein kuch nhi karna hai ye User hii humare behalf pe call karega mongodb database ko jitni baar chaiye utni baart call kar sakta hai
-  const existedUser = User.findOne({
+  const existedUser = await User.findOne({ // await lagana hai
     //muje check karna hai ki user ka ya toh email mil jaye ya to user ka username mil jaye ho sakta hai email alag ho but username already le rakha ho phir mein dunga
     //so we will use operators so $ sign use karke hum kaafi operators use kar sakte hai
     $or: [{ username },{ email }]
@@ -121,17 +121,18 @@ const registerUser = asyncHandler( async (req, res)=> {
   toh jaise aapke pass req.body by default express ne de diya hai toh multer humein deta req.files ka access
   deta hai i.e multer humein req.files ka access de deta hai abb kyunki humare pass multiple files hai toh 
   files ka access humein issi tarah milta hai */
-  const avatarLocalPath = req.files?.avatar[0]?.path; //kyunki humne file ko bola hii avatar hai isliye mein file ka naam avatar le rha hoon
+  //const avatarLocalPath = req.files?.avatar[0]?.path; //kyunki humne file ko bola hii avatar hai isliye mein file ka naam avatar le rha hoon
+   const avatarLocalPath = req.files?.avatar[0]?.path;
   //console.log(avatarLocalPath) aise check bhi kar sakte hai 
   // avatarLocalPath isliye kyunki ye abhi humare server par hai ye abhi tak cloudinary par nhi gya hai
 
   //same with coverImage
   const coverImageLocalPath = req.files?.coverImage[0]?.path; //ie coverImage[0] ki first property se humein optionally ho sakta hai mil jaye ek path
-  
+  console.log(avatarLocalPath, "ye error hai")
   //toh humare pass server mein 2 LocalPath aagaye abb ye LocalPath honge ya nhi hone iski koi gurantee nhi hai ho bhi sakte hai nhi bhi ho sakte
   //but ek path to chaiye hii chaiye ki humare pass mein avatar wali image toh honi hii chaiye toh check karenge
   if(!avatarLocalPath) {
-    throw new ApiError(400, "Avata file is required")
+    throw new ApiError(400, "Avatar file is required")
   }
 
 //STEP 5- ABB ye dono file i.e avatarLocalPath and coverImageLocalPath jo humare server mein hai inko cloudinary mein upload karna hai
@@ -154,7 +155,7 @@ const registerUser = asyncHandler( async (req, res)=> {
  //STEP 6- Abb agar saara kaam thik se hogya hai avatar ye sab ka url aagaya hai toh ek object banao aur database mein entry maar do
  ////toh abb bas object banakar database mein entry kardo toh abb database mein entry kaise hoga
  //toh humare pass ek hii chiz hai jo Database se baat kar rha hai ye User hai yahi database se baat kar rha hai
-  const User = await User.create({//database mein User create hone mein time lagega isliye hum use karenge await ko
+  const user = await User.create({// idhar const user karo User nahi database mein User create hone mein time lagega isliye hum use karenge await ko
   fullName,
   avatar: avatar.url,//so cloudinary humein poora response bhejega but humein response mein se sirf url ko database mein store karenge
   //so agar avatar:avatar karte toh poora object database mein store ho jata but humein sirf url ko hii store karna tha
@@ -171,7 +172,7 @@ const registerUser = asyncHandler( async (req, res)=> {
 //agar ye User successfully create hua hai n toh sirf humne jo data diya hai yahi sab data create nhi hota
 // iske saath mongodb apne aap har ek entry k saath ek _id naam ka field add kar deta hai user._id mil gya toh matlab user aapka create
 //so yeh _id yeh ek extra field apne aap add hota hai
-const createdUser = await User.findById(username._id).select( //THIS IS STEP 7 i.e remove the password and refreshToken field from response
+const createdUser = await User.findById(user._id).select( //THIS IS STEP 7 i.e remove the password and refreshToken field from response
   //ismein hum woh field likhte hai jo nhi chaiye because we want to remove password  and refreshToken
   //toh by default saare selected hote hai toh "-" negative minus jis field k aage matlab woh nahi chaiye
   "-password -refreshToken"
@@ -189,7 +190,7 @@ const createdUser = await User.findById(username._id).select( //THIS IS STEP 7 i
  //hum chahte hai ki Response properly structured organized Response jaye har baar toh iske liye ApiResponse lagega
  //toh mein chahta hoon ki ye createdUser hai isko poore ko hii hum data k saath because in ApiRespone mein this.data aise allowed hai data ko bhejna
 
- return res.ststus(201).json(
+ return res.status(201).json(
   new ApiResponse(200, createdUser, "User registered Successfully")
   //here createdUser is data yahi data ApiResponse mein jaakar this.data banta hai
  )

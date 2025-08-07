@@ -5,7 +5,8 @@ par upload kar dunga now abb file ko humare server se remove bhin karna padega i
 hogyi hai cloudinary par toh abb mere Server ko uss file ki jarurat hai nhi toh hum uss file ko i.e localpath k 
 file ko Humare server se remove kar denge */
 import {v2 as cloudinary} from "cloudinary"
-
+import dotenv from "dotenv";//must import this otherwise will get error 
+dotenv.config(); //configurethis otherwise will get error 
 /*toh Nodejs k andar ek fs i.e file system milta hai iss library ko install nhi karna padta hai ye Nodejs k
 saath by default milta hai .so HUMARA jo file system hota hai n usmein file linked aur unlinked hoti hai
 toh jab aap koi bhi file delete kar dete ho toh woh file fileSystem se UNLINKED HO JATI HAI 
@@ -32,7 +33,7 @@ import fs from "fs"
 
             //upload the file on cloudinary
             const response = await cloudinary.uploader.upload(localFilePath, {
-                resource_type: auto //ye options milta hai Note- ye localFilePath ye file humari server par pade file se aarahi hai
+                resource_type: "auto" //ye options milta hai Note- ye localFilePath ye file humari server par pade file se aarahi hai
             })
             //file has been uploaded successfully
             console.log("file is uploaded on cloudinary", response.url)//yeh response mein cloudinary se jo response aayega url woh hoga
