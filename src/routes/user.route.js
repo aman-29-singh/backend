@@ -1,7 +1,8 @@
 import express from "express";
 import { Router } from "express";
-import { registerUser } from "../controllers/user.controller.js";
+import { loginUser, logoutUser, registerUser } from "../controllers/user.controller.js";
 import {upload} from "..//middlewares/multer.middleware.js" //ye middleware bich mein use hota hai
+import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
@@ -24,6 +25,17 @@ router.route("/register").post(//ye method registerUser execute hone se pehle hu
     res.send("Test route working"); //route ko check karne k liye
 });*/
 
+
+//now humein ek aur new route add karna hai /login route
+router.route("/login").post(loginUser)
+/*abhi muje kuch aise routes hai jo user ko dene hai jab user login ho aur login ka verification kaise karunga
+apne auth middleware se login ka verification karunga user ka token hai aur token hii toh ek tarika hai 
+janeka ki user login ho ya nhi ho toh isko hum secured routes bolenge */
+
+//secured routes
+router.route("/logout").post(verifyJWT,logoutUser)//so ye verifyJWT middleware ye logoutUser se pehle chal jayega
+//so ye verifyJWT middleware ye logoutUser se pehle chal jayega phir middleware ki next ki wajah se logoutUser chalega baad mein
+//ye verifyJWT middleware ye auth.middleware.js se aayega 
 
 export default router
 

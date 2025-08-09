@@ -325,8 +325,118 @@ const loginUser = asyncHandler(async (req, res) => {
     //SO METHOD ABOVE UPAR BANAYAENGE i.e const generateAccessAndRefreshTokens= async(userId) toh iss user humare user k through userId le sakte hai
     
 
+     const { accessToken, refreshToken }= await generateAccessAndRefreshTokens(user._id)//iss method se humein user ko Access token and Refresh token mil rha hai
+     //iss method se humein user ko Access token and Refresh token mil rha hai
 
+     //so abb ye access and refresh token ko hum cookies mein bhejenge
+     //cookies mein bhejna difficult task nhi hai toh abbuser ko humein kya kya information bhejni hai
+     //so hum isss user ko direct bhi bhej sakte hai toh abhi server mein jitni information aayi hai user k through 
+     //toh humne findOne karke woh information le liya tha uss user ko toh but user ka kuch unwanted information aagayi hai
+     //unwanted information means field like password and refreshToken toh .select() use karenge jo field nhi chaiye usko mana karne k liye
+     const loggedInUser = await User.findById(user._id).
+     select("-password -refreshToken")
+     //so abb jo loggedInUser humare pass aayega server mein aayega iske andar saare fields hai jo humein client user ko bhejna hai
+
+     /*Now humein bhejni hai cookies toh cookies jab bhi hum i.e server bhejta hai toh cookies kya hota hai ki 
+     server ko kuch options design karne padte hai cookies k toh options kuch nhi hote hai ye bject hota hai bas
+     */
+    const options = {
+      httpOnly: true,
+      secure: true
+      /*isse kya hota hai ki humari cookies ko by default ko bhi modify kar sakta hai frontend par but jaise 
+      hii hum httpOnly:true and secure:true karte hai tab kya hota hai ki ye cookies sirf aur sirf server se
+      modifiable hoti hai i.e user frontend se inn cookies ko modify nhi kar sakte frontend se user sirf
+      inn cookies ko dekh sakta hai  so ye cookies sirf server se hii modify hogi */
+    }
+
+    return res//yahan par we sent an response i.e return a response
+    .status(200)
+    .cookie("accessToken", accessToken, options)//toh humne yahan par set cookie kiya
+    //so here "accessToken" is a key and , accessToken is a value and options bh diye 
+    .cookie("refreshToken", refreshToken, options)//here we set an cookie of refreshToken
+    .json( //json Response
+        new ApiResponse(
+          200,
+          {
+            //ye object ApiResponse mein this.data:data hai toh ye wala object data hai
+             user: loggedInUser, accessToken,refreshToken //ye data haai ApiResponse mein
+             /*abb dimag mein aayega ki jab cookiesmein set kardiye the accessToken refreshToken ko toh
+             ye alag se json response mein accessToken and refreshToken bhejne ki kya jarurat thi toh yahan par
+             hum woh case handle kar rhe hai jab ho sakta hai user i.e client khud apni taraf se accessToken, refreshToken ko save
+             karna cha rha hai i.e ho sakta hai user localStorage mein cookie ko save karna cha rha ho koiu user ka bhi reason
+             ho isliye ye bhejna achi practice hai */ 
+          },
+          "User logged In successfully"//message hai
+        )
+    )     //so yeh loggedIn user api humara ready hogya abb iska route st karna hai in routes folder
+   
 
     })
 
-export {registerUser,loginUser}
+    /*NOW-- HUm karenge logout kaise karenge user ko */
+    const logoutUser = asyncHandler(async(req, res)=> {
+      /**now logoutUser kaise karenge so sabse pehle startegy aani chaiye ki koi bhi user agar logOut
+       * par click karega toh uss user ko logout hum kar kaise sakte hai toh sabse pehle woh user ki cookies wagera 
+       * hatta do clear kardo kyunki user ki cookies wagera ye server se hii manage ho sakti hai because httpOnly:true
+       * hai toh pehla kaam ye karoaur ek aur baat dimmag mein aana chaiye ki ye jo refreshToken hai user ka humare model
+       * k andar i.e user.model.js k andar jo refreshToken hai iss refreshTOKEN Ko bhi toh reset karna padega i.e delete
+       * karna padega tabhi toh user sahi mayane mein user logout hoga so ye 2 kaam karne hai
+        */
+
+      /*now hum user ko find kaise karenge because ye method logoutUser k pass user ka access nhi hai
+       so humne loginUser method mein user ka access req.body se liya tha i.e form se but abb logout karne k
+       liye hum user ko form toh nhi de sakte ki apna email do aur logout ho toh phir toh kisi ko bhi
+       logout kar dega ye logoutUser method koi bhi email daal k  so problem toh hai ?  toh iss problem ka
+       solution bohat aasan hai so hum middleware concept ko use kar sakte hai jaise  humne multer k liye 
+       middleware use kiya tha  ki form ka data toh request k saath jaa raha hai lekin images file ko bhi lekar jao
+       apne saath mein yahi toh middleware tha toh issi tarah ka hum apna middleware bhi design kar sakte hai
+       so ye request,ye response ye hai kya ye ek object hii toh hai iss object k andar jaise values aapki cookies
+       add hogyi,.file add hogyi multer k through,cookie-parser k through humne cookie add kiya inn req,rsponse 
+       objects k andar toh waise hum khudka middleware bhi design kar sakte hai
+       so revison mein jaise humuser.route.js mein jayenge toh "/register" route mein humne middleware upload.fields
+       lagaya i.e ye upload.fields humara middleware tha in "/register" route mein issi tarah se agar
+       hum app.js mein jayengetoh app.js mein humne app.use(cookieParser()) laga diya abb ye cookieParser lagane
+       se sirf itna sa hua ki hum res.cookie() aisa access kar paa rahe aur server ye res.cookie(refreshToken) aise
+       karke response mein cookie send kar paa raha hai aur sirf itna hii nhi cookie two way access hoti hai
+       toh yahan parf jo humare pass field aaya hai i.e loginUser = asyncHandler(async (req, res)={}) toh ye
+       field  i.e req and res mein hum req.cookie aisa request mein bhi bol sakte hai so 
+       response  mein bhi hum res.cookie bol paye because ek naya object cookie humne response object mein add 
+       kar diya aur request object mein bhi hum cookie ko access kar sakte hai by req.cookie() karke kyunki humne
+       humne cookie middleware add kar diya so reuest object mein hum req.cookie se cookie access kar sakte hai 
+       because humne cookie middleware add kar diya so issi tarah se hum apna middleware add kar sakte hai
+       i.e apna middleware design kar sakte hai so middleware folder k andar hum ek authentication ka middleware
+       banayenge i.e auth.middleware.js so ye middleware actually mein sirf verify karega ki user hai ya nhi hai
+       so auth.middleware.js mein method likhenge verify jwt() so abb jwt ko verify kyu karna ? because
+       jab humne i.e server ne user ko login karwaya toh server ne ye accessToken and refreshToken ye user ko de 
+       diye toh inhi accessToken and refreshToken k basis par hii toh server user ko verify karega ki user k pass
+       sahi Token hai ya nhi yahi token hii toh user ka true login hua toh agar user k pass true login hai matlab
+       user k pass token wagera sahi hai toh humara startegy hai ki hum iss request k andar i.e ye jo req.body hai
+       req.cookie hai iss requset k andar ek new naya objectt add kardunga request.user i.e req.user abb is object
+       ka naam user hona jaruri nhi hai hum req.aman bhi likh sakte hai but abb hum application banayenge
+       aur wahan par req.aman thoda unproffessional lagta hai isliye req.user    */
+       await User.findByIdAndUpdate(
+        req.user._id,
+        {
+          $set: {
+            refreshToken: undefined
+          }
+        },
+        {
+          new:true
+        }
+       )
+
+       const options = {
+        httpOnly: true,
+        secure: true
+       }
+
+       //cookies clear karni hai
+       return res
+       .status(200)
+       .clearCookie("accessToken", options)
+       .clearCookie("refreshToken",options)
+       .json(new ApiResponse(200, {}, "User is logged out"))//here data is empty i.e {}
+    })
+
+export {registerUser,loginUser,logoutUser}
