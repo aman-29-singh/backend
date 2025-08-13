@@ -4,6 +4,7 @@ import {ApiError} from "../utils/ApiError.js"
 import { User} from "../models/user.model.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
+import jwt from "jsonwebtoken";
 
 //ye method separately bana rahe hai because ye method bohat jaghah use hoga jab tokens banana hoga
 const generateAccessAndRefreshTokens = async(userId) => {
@@ -167,7 +168,7 @@ const registerUser = asyncHandler( async (req, res)=> {
   let coverImageLocalPath;
   //so classic tarika check karne ka ki coverImageLocalPath
   if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
-    coverImageLocalPath = reqfiles.coverImage[0].path //isse coverImage="" aayega agar empty hoga toh but advance if else se error aata
+    coverImageLocalPath = req.files.coverImage[0].path //isse coverImage="" aayega agar empty hoga toh but advance if else se error aata
   }
   //console.log(avatarLocalPath, "ye error hai")
   //toh humare pass server mein 2 LocalPath aagaye abb ye LocalPath honge ya nhi hone iski koi gurantee nhi hai ho bhi sakte hai nhi bhi ho sakte
@@ -286,10 +287,18 @@ const loginUser = asyncHandler(async (req, res) => {
     //STEP-1
     const { email, username, password } = req.body
 
-    if (!username || !email) { //agar user k pass username or email dono nhi hai toh error send karo
+    if (!username && !email) { //agar user k pass username and email dono nhi hai toh error send karo
         throw new ApiError(400, "username or password is required")
         //agar sirf email se hii login karwana tha toh hum if(!email) karke check karte
     }
+
+    /**
+     * here is an alternative of above code based on logic
+     * if (!(username || email)) { //agar user k pass username or email dono nhi hai toh error send karo
+        throw new ApiError(400, "username or password is required")
+        //agar sirf email se hii login karwana tha toh hum if(!email) karke check karte
+    }
+     */
 
     /*so agar aap user already Registered ho toh user login kar sakta hai toh matlab ya toh username ka koi hoga mere pass database mein
     ya toh email ka hoga toh dono ko kaise find kar sakte   */
@@ -439,4 +448,109 @@ const loginUser = asyncHandler(async (req, res) => {
        .json(new ApiResponse(200, {}, "User is logged out"))//here data is empty i.e {}
     })
 
-export {registerUser,loginUser,logoutUser}
+
+/*ye bana rahe hai endpoint taki user k AccessToken ko Refresh karwa sakein agar AccessToken expire hogya
+hai toh ye endpoint hit karke user apna RefreshToken uss endpoint k saath mein bhejega toh user k pass
+se aaya hua RefrehToken and server k database mein store hua user Ka RefreshToken agar dono RefreshToken match hua 
+i.e same hua toh user ka AccessToken server refresh karke naya AccessToken user ko dedega aur saath mein new refreshToken
+ko bhi database mein store kar lega toh controller banayenge RefreshToken ka jise client k refreshToken ko match kiya 
+jayega database mein save user k refreshToken se dono mtach kiya toh new RefreshToken bhi bana denge aur client
+k accessToken ko Refresh bhi kar denge aur iska ek endpoint i.e ek route bhi bana denge router.route("/refresh-token")
+aur ye post request hoga in user.route.js file */
+const refreshAccessToken = asyncHandler(async (req, res)=>{
+  /*so abb steps sochte hai ki humara server ye user k a accessToken Refresh kaise karwa payega
+  so iske liye user ko server k pass RefreshToken bhejna hii padega toh server mein user ka RefreshToken
+  kahan se aayega toh user k cookies se access mil sakta hai user k RefreshToken ka server ko 
+  i.e agar koi bhi user iss endpoint ko hit kar hai toh humara server uss user k cookies se uss user ka 
+  RefreshToken ko access kar lega i.e req.cookies.refreshToken aise humara server user k cookies se RefreshToken
+  access lar lega or ho sakta hai koi mobile app use kar rha ho to refrehToken cookiess nhi balki body se aaye
+  i.e ho sakta ho body mein refreshToken bhej rha ho toh req.body.refreshToken aise karke refreshToken ko 
+  acess kar sakte hai server mein i.e server user k RefreshToken ko incomingRefreshToken k andar store karega */
+  const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken  
+
+  if(!incomingRefreshToken){
+    //ye ApiError hii error ka Response hai
+    throw new ApiError(401,"unAuthorized request")//unAuthorized request isliye because user ka token sahi nhi hai
+  }
+
+  //abb jo incomingRefreshToken user ka server k pass aaraha hai isko vrify bhi toh karna padega 
+  //i.e bina verify kare kaam nhi chalega kyunki dono refreshToken and accessToken ek hii tarah se ban rahe hai
+  //so we will verify the incomingRefreshToken with the help of jwt i.ejwt.verify se 
+  /**ye jwt.verify se humein decoded information mil jati hai jo bhi decoded information hai toh agar hai 
+   * toh mil jati hai information  agar nhi hai toh atleast Token toh decoded server ko mil jata hai user ka
+   * warna jo refreshToken user k pass jata hai woh encrypted form mein jata hai so jo Token user k pass jo
+   * RefreshToken hota hai and jo RefreshToken server k database mein store hota hai Raw form mein dono alag
+   * chize hoti hai because user k pass encrypted RefreshToken hota hai and server k database mein Raw RefreshToken
+   * store hota hai isliye jwt.verify se user k encrypted RefreshToken ko decode kiya jata hai phir ye encrypted
+   * se Raw RefreshToken ban jata hai tab ye decodedRefreshToken and server k database mein jo RefreshToken store
+   * hai dono ko match verify compare kiya jata hai 
+   * so server ko chaiye raw RefreshToken user ka because yahi Raw RefrehToken ko server apne database mein store
+   * karke rakha hai phir dono RefreshToken ko match karta hai
+   * Note- abb jaruri nhi hai ki decoded Token mein payload ho hi ho because payload humesha optional chiz hoti hai 
+   * i.e jwt mein header,payload data and signature hota hai
+   */
+  try {
+    const decodedToken = jwt.verify(
+      incomingRefreshToken,//abb user ka jo incoming Token hai woh decodedTOKEN mein badal jayega
+      process.env.REFRESH_TOKEN_SECRET
+    )
+      /**abb kyunki ye jo RefreshToken hai ye decode hogya gya toh iss RefreshToken ki saari information 
+       * humare server k pass aagayai hogi toh jab ye RefreshToken ko humne i.e jab server ne iss RefreshToken ko
+       * banaya tha in user.model.js mein toh iss RefreshToken k andar server ne sirf ek chiz daali thi woh thi Id
+       * i.e _id sirf i.e _id: this._id sirf id daali thi toh abb kyunki user ka RefreshTOKEN decode hogya hai
+       * toh iss _id ka access humare server k pass hona chaiye abb toh abb agar iska _id ka access hai humaare 
+       * server mein toh kya hum i.e server ye mongodb mein Query maarke uss user jka access le sakta hoon
+       */
+      const user = await User.findById(decodedToken?._id)//database query hai isliye await use kiye
+  
+      //now agar user nhi mila database se toh ya database se nhi aaya kisine koi fictisious token diya toh
+      //agar user database se nhi aaya toh error dena padega
+      if(!user){//aagar user databaase mein nhi hai toh error do
+        //ye ApiError hii error ka Response hai
+        throw new ApiError(401,"Invalid Refresh Token")
+      }
+  
+      //abb agar idhar aagaye toh humara token valid hii hona chaiye
+      /**so client i.e user k RefreshToken ko decode karke jo client k token k information se _id se jo user
+       * database mein mila hai toh iss _id k user k pass bhi database mein ek RefreshToken hoga because jab
+       * user.model.js k andar jab ye generateRefreshToken ban gya tha toh humne i.e server ne iss poore k poore
+       * RefreshToken ko save bhi karaya tha issi user.controller.js file mein upar generateAccessAndRefreshToken 
+       * k andar i.e user.save karke mongodb database k andar RefreshToken ko save bhi karaya tha  
+       * so hum match karenge ki jo client ka incomingRefreshToken k through jo refreshToken aa raha hai woh
+       * _id k through jo mongodb mein jo user store hai uske refresToken se match kar rha hai ya nhi
+       */
+      if(incomingRefreshToken !== user?.refreshToken){
+        throw new ApiError(401, " Refresh token is expired or used")
+      }
+  
+      /*agar incomingRefreshToken and database mein user k refreshToken dono agar match kiye toh new naye token
+      generate karo toh sabse prhle hai ki cookies mein bhejna hai toh options rakhne padcenge*/
+      const options = {
+        httpOnly: true,
+        secure: true
+      }
+      //soo option banane k baad bhi refreshToken ko generate kar sakte hai
+      const {accessToken,newRefreshToken}= await generateAccessAndRefreshTokens(user._id) //ye method upar define hai isse naya new RefreshToken generate karayenge
+      //ye method upar define hai isse naya new RefreshToken generate karayenge
+  
+      return res
+      .status(200)
+      .cookie("accessToken", accessToken)//idhar se response mein cookie k andar accessToken bheja server ne
+      .cookie("refreshToken", newRefreshToken,options)//idhar se response mein cookie k andar refreshToken bheja server ne
+      .json(
+        new ApiResponse(
+          200,
+          {accessToken, refreshTToken: newRefreshToken},
+          "Access token Refreshed successfully"//ye message Response mein server bhejega
+  
+        )
+      )
+  } catch (error) {
+    throw new ApiError(401, error?.message || "Invalid refresh token")
+    
+  }
+
+  
+})
+
+export {registerUser,loginUser,logoutUser,refreshAccessToken}

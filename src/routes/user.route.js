@@ -1,6 +1,6 @@
 import express from "express";
 import { Router } from "express";
-import { loginUser, logoutUser, registerUser } from "../controllers/user.controller.js";
+import { loginUser, logoutUser, registerUser, refreshAccessToken } from "../controllers/user.controller.js";
 import {upload} from "..//middlewares/multer.middleware.js" //ye middleware bich mein use hota hai
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
@@ -36,6 +36,8 @@ janeka ki user login ho ya nhi ho toh isko hum secured routes bolenge */
 router.route("/logout").post(verifyJWT,logoutUser)//so ye verifyJWT middleware ye logoutUser se pehle chal jayega
 //so ye verifyJWT middleware ye logoutUser se pehle chal jayega phir middleware ki next ki wajah se logoutUser chalega baad mein
 //ye verifyJWT middleware ye auth.middleware.js se aayega 
+router.route("/refresh-token").post(refreshAccessToken)//yahan par verifyJWT Ka middleware nhi lagayenge
+
 
 export default router
 

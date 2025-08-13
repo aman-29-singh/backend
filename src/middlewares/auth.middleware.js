@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
-import { ApiError } from "../utils/ApiError";
-import { asyncHandler } from "../utils/asyncHandler";
-import { User } from "../models/user.model";
+import { ApiError } from "../utils/ApiError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { User } from "../models/user.model.js";
 
 
 export const verifyJWT = asyncHandler(async (req, res, next) => {
@@ -66,7 +66,35 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
 
         //now agaar ujser nhi hai so throw error
         if (!user) {
-            //discuss about frontend
+            //discussion about refresh and access token
+            /*dekhiye ye jo access token and refresh token hai n inka sirf itna sa kaam hai ki user ko
+            baar baar apna email aur password na dena pade so aapka user ka jo access token hota hai 
+            woh jyada tar short lived hota hai i.e short lived maan lijiye ek din k liye toh ek din k baad
+            kya hoga ki user ko ya toh wapas se login Id ,password daal kar access Token ko Refresh karana
+            padega but kaafi jo badi organization hai jaise google fcebook wagera inhone propose kiya tha
+            sabse pehle apne research paper mein ki hum 2 tarah k token rakh sakte hai ek toh access token
+            jo servr kahin par save nhi rakhega ye access Token user k pass hoga short lived hoga jaise 15 minute
+            1 ghanta aise taki user constant kaam karle but server ek aur token rakh lega jisko session storage
+            bhi bolte hai waise yeh Refresh token hii hota hai yeh Refresh token ko server ne database mein bhi
+            rakha hai aur ye Refresh token ko user ko bhi diya hai server ne but access token ko server sidha user
+            ko deta hai ye access token ko server database mein store nhi rakhta toh agar suppose kariye
+            k user ka agar access Token invalidate hogya hai i.e user k access token ka time up hogya hai 
+            i.e expire hogya hai toh user k pass obvious si baat hai ek 401 request aayegi ki aapka access expire
+            hogya toh frontend wala agar koi resource ko access karna chahta hai aur frontend  wale k pass 401 request
+            aajati hai toh frontend wala user ko ye bol ne ki wajah ki wapas login karlo frontend iski jagah ek
+            chota sa code aur likh sakta hai ki agar 401 request aaye toh ek end point hit karo aur wahan se apna 
+            access token refresh karwa lo yani ki user ko naya new token mil jayega abb ye naya token user ko
+            kaise milega ki jab user uss 401 request par ek endpoint hit karega  toh iss request k through
+            user apna Refresh Token send karega bhejega saath mein toh abb server ko user ka Refresh Token jaise
+            mila toh server kya karega ki server k backend k database mein user ka Refresh Token already store hai
+            toh server ye Refresh ttoken ko match kar lega ki user k 401 request k endpoint k saath mein jo
+            REfresh Token aaya hai woh database mein store user k Refresh Token se match ho rha hai ya nhi
+            agar match hoga i.e dono Refresh Token agar same hoga to doobara phir se session start ho jayega ye
+            ek tarah se login i.e signIn karne jaisa hii toh hua toh phirse server ye access Token bhej dega cookies mein
+            user ko aur Refresh Token bhi naya new karke server ye database mein save kar lega yahi hai kahani
+            refresh Token and Access Token ki toh hum cahate hai ki ek end point ho jahan se user apna accessToken
+            Refresh kara paye toh ye hum user.controller.js mein karenge ie controller banayenge 
+            i.e controller banayenge i.e refreshAccessToken n user.controller.js  */
             throw new ApiError(401, "Invalid Access Token")
         }
 

@@ -136,7 +136,7 @@ userSchema.methods.generateAccessToken = function () {
     return jwt.sign(//TOH isse token banaya hai token banane k liye 3 chiz chaiye hota hai payload,Secret_key,expiresIn
         {
             //YEH PAYLOAD HAI TOKEN KA
-            /*ye jo method hai n jwt.sign() ye already humsri database mein chize save hai aur inke pass
+            /*ye jo method hai n jwt.sign() ye already humsri database mein chize+ save hai aur inke pass
             i.e this k pass unn sab ka access hai this k pass isliye function{} likhte hai aur arrow
             function nhi likhte because arrow function mein (this) use nhi hota */
             _id: this._id,
