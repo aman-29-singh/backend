@@ -553,4 +553,179 @@ const refreshAccessToken = asyncHandler(async (req, res)=>{
   
 })
 
-export {registerUser,loginUser,logoutUser,refreshAccessToken}
+
+//update k controllers likhenge
+const changeCurrentPassword = asyncHandler(async(req,res)=>{
+  //now ismein humein simply se user se current password change karana hai
+  /**NOTE- abb muje current password change karate time headache ye nhi hai  ki check karna ki current user
+   * already loggedIn hai ya nhi hai cookies hai ya nhi because jab hum iska route banayenge i.e changeCurrentPassword
+   * iska route banayenge toh route mein midddleware laga denge i.eJwtVerify wala middleware banaya hai n humne
+   * issi kaam k liye toh middleware banaya hai JwtVerify
+   * so abb jab hum i.e server jab user se currentPassword change karata hai toh user se kitne field lene hai
+   * ye depend karta hai server pe means ye server lega req.body se user k so abb kitne field user ko lene hai 
+   * yeh server k upar depend hai toh idhar hum server lega fiels i.e oldPassword, newPassword
+   * now idhar humein i.e server ko sabse pehle ek user chaiye hoga tabhi toh uss user k field mein jaakar hum server
+   * password ko verify karwa payenge toh abb hum i.e server user ko kaise le toh agar user ye password apna change
+   * kar paa rha hai n iska matlab user loggedIn toh hai aur ye user loggedIn ho paa rha hai because humne i.e server 
+   * ne middleware VerifyJwt lagaya hai aur ye middleware karata kya hai req.user mein user hai toh agar auth middleware
+   * i.e verifyJwt agar chala hai toh confirm si baat hai ki req.user k andar user hai aur iss user mein se hum 
+   * i.e server ye user_id nikal sakta hai i.e req.user?._id means agar middleware verifyJwt mei agar
+   * req.user k andar user hoga toh uss user k anadar se hum user._id nikal sakte hai toh abb iss
+   * user._id i.e iss _id ka basis par hum i.e server hum user find kar sakte hai i.e User.fibdById(req.user?._id)
+   * now abb jo model user hai ismein humne i.e server ne ek method define kiya tha isPasswordCorrect karke
+   * toh jo yeh User.findById(req.user?._id) se jo user aaya hai iske oldPassword ko verify karo
+   * i.e user.isPasswordCorrect(olsPassword) toh abb isse humein i.e server ko true ya false value mil jayegi     
+   */
+  const {oldPassword, newPassword} = req.body
+
+  const user = await User.findById(req.user?._id)
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)//ye true yaa false value degaa
+
+  if(!isPasswordCorrect){
+    throw new ApiError(400, "Invalid old password")
+  }
+
+  //idhar aagaye means user ka oldPassword correct tha abb new password set karna hai
+  user.password = newPassword//yahan par abhi set kiya haai newPassword ko user k password field k andar phir isko save bhi karenge
+  await user.save({validateBeforeSave: false})
+
+  //abb idhar user ek message bhej dete hai ki user ka password successfully change hogya hai
+  return res
+  .status(200)
+  .json(new ApiResponse(200, {}, "Password changed Succesfully"))//idhar {} iska matlab data kuch bhejna nhi hai
+})
+
+
+/**Now hum likhenge ki kaise humein current User lena hai so ye kaise lena hai so yeh alag alag situation wagera 
+ * hongi ki kaise woh endPoint hit kate hai but ek endpoint  humein i.e server ko banana padega  jahan par 
+ * hum i.e server ye current User ko get kar paye toh abb current user kaise get karna hai yeh simple code
+ * hai ye simple isliye hai because server ne i.e humne middleware banaya tha aur jab middleware banaya
+ * tha toh poora ka poora user hai yahi inject kar diya tha req.user k andar toh agar user loggedIn hai 
+ * toh usko mein 2 minute mein current user de sakta hoon 
+ *   */
+const getCurrentUser = asyncHandler(async(req, res)=>{
+  return res
+  .status(200)
+  .json(200, req.user,"current user fetched successfully")//so yeh req.user ye data response mein server bhej rha hai
+
+})
+
+
+
+//so idhar  hum text based data ko update karenge
+const updateAccountDetails = asyncHandler(async(req,res)=>{
+  const {fullName, email} = req.body //ye fullName,email ye req.body se data lekar database k user.model k fullName mein store hoga
+
+  if(!fullName || !email){ //i.e dono chaiye
+    throw new ApiError(400, "All fields are required")
+  }
+
+  //Now fullName aur email dono ko update karne ka information client par bhejte hai
+  //toh sabse pehle we will find user
+  const user = User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set:{
+        fullName,
+        email
+      }
+    },
+    {new: true}//ye true karne se update hone k baad jo information hai woh aapko return hoti hai
+  ).select("-password")//means password field nhi chaiye
+
+  return res
+  .status(200)
+  .json(new ApiResponse(200, user, "Account details updated successfully"))
+})
+
+
+
+//Now dekhenge ki files kaise update karenge so iske liye multer middleware lagana padega taki server files ko accept kar paye
+//aur wahi log files ko update kar payenge jo loggedIn ho warna har kisiko thodi n file update k liye profile denge
+//so 2 middleware humein use karne padenge i.e auth middleware se VerifyJwt and multer middleware
+//toh routing karte time hum dhyan rakhenge
+const updateUserAvatar = asyncHandler(async(req,res)=>{
+  //abb Avatar update karana padega
+  //so iske liye hum req.files se file lenge aur yeh req.files humein multer middleware deta hai
+  //to humein bas edk file lena hai toh re.file aisa lenge files nhi lenge because files matlab multiple files
+  const avatarLocalPath = req.file?.path//agar cloudinary wagera use nhi karna hai toh hum issi ko database mein save kara sakte hai
+
+  //check ki avatarLocalPath hai ki nhi
+  if(!avatarLocalPath){
+    throw new ApiError(400,"Avatar file is missing")
+  }
+
+  //abb agar avatarLocalPath hai toh iss avatar ko upload kardo cloudinary par
+  const avatar = await uploadOnCloudinary(avatarLocalPath)
+
+  //agar ye jo avatar uplaoad kara hai cloudinary pe agar iss avatar k anadar url nhi hai toh problem hai
+  if(!avatar.url){
+    throw new ApiError(400, "Error while uploading on avatar")
+  }
+
+  //now karna hai update avatar field ko Note yahan par bas ek object update ho rha hai so its javascript
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,//isko iss id k user ko update karna hai
+    {
+      //yeh update kara hai isliye set use karte hai ye data hii ApiResponse mein bhejte hai
+      //sirf ek object update karna hai isliye set use karte hai
+      $set:{
+        avatar: avatar.url//sirf url update karna hai
+      }
+    },
+    {new: true}
+  ).select("-password")//so update hokar jab user ko uski profile dikhegi toh uss profile mein password field nhi hoga
+
+  return res
+   .status (200)
+   .json(
+    new ApiResponse(200, user,"Avatar image updated successfully")//yeh user data ko ApiResponse mein send karenge client ko
+   )
+})
+
+
+//we will update coverImage
+const updateUserCoverImage = asyncHandler(async(req,res)=>{
+  //abb Avatar update karana padega
+  //so iske liye hum req.files se file lenge aur yeh req.files humein multer middleware deta hai
+  //to humein bas edk file lena hai toh re.file aisa lenge files nhi lenge because files matlab multiple files
+  const coverImageLocalPath = req.file?.path//agar cloudinary wagera use nhi karna hai toh hum issi ko database mein save kara sakte hai
+
+  //check ki avatarLocalPath hai ki nhi
+  if(!coverImageLocalPath){
+    throw new ApiError(400,"cover Image file is missing")
+  }
+
+  //abb agar avatarLocalPath hai toh iss avatar ko upload kardo cloudinary par
+  const coverImage = await uploadOnCloudinary(coverImageLocalPath)//ye coverImage same rahega database k model k coverImage se
+
+  //agar ye jo avatar uplaoad kara hai cloudinary pe agar iss avatar k anadar url nhi hai toh problem hai
+  if(!coverImage.url){
+    throw new ApiError(400, "Error while uploading on avatar")
+  }
+
+  //now karna hai update avatar field ko Note yahan par bas ek object update ho rha hai so its javascript
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,//isko iss id k user ko update karna hai
+    {
+      //yeh update kara hai isliye set use karte hai ye data hii ApiResponse mein bhejte hai
+      //sirf ek object update karna hai isliye set use karte hai
+      $set:{
+        coverImage : coverImage.url//sirf url update karna hai
+      }
+    },
+    {new: true}
+  ).select("-password")//so update hokar jab user ko uski profile dikhegi toh uss profile mein password field nhi hoga
+
+   return res
+   .status (200)
+   .json(
+    new ApiResponse(200, user,"cover image updated successfully")//yeh user data ko ApiResponse mein send karenge client ko
+   )
+})
+
+export {registerUser,loginUser,
+  logoutUser,refreshAccessToken, 
+  changeCurrentPassword, getCurrentUser, 
+  updateAccountDetails, updateUserAvatar,
+  updateUserCoverImage}
